@@ -24,29 +24,44 @@ export interface ApiRequest {
  */
 export async function callApi(requestDetails: ApiRequest): Promise<any> {
   try {
-    const { url, method, data } = requestDetails;
+    let { url, method, data } = requestDetails;
 
-    // Check if the URL is valid before making the fetch request
     if (!url) {
       throw new Error("URL is required");
+    }
+
+    console.log('Request body:', JSON.stringify(data, null, 2));
+
+    // Si es GET y data tiene valores, se añaden como parámetros en la URL
+    if (method === 'GET' && data && Object.keys(data).length > 0) {
+      const params = new URLSearchParams(data).toString();
+      url = `${url}?${params}`;
     }
 
     let response;
     try {
       response = await fetch(url, {
-        method: method,
+        method,
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
-        body: method === 'POST' ? JSON.stringify(data) : undefined,
+        body: method === 'POST' ? (typeof data === 'string' ? data : JSON.stringify(data)) : undefined,
       });
     } catch (fetchError: any) {
-      // This catch specifically handles network errors or issues during the fetch process
+      console.error('Fetch error details:', fetchError);
       throw new Error(`Failed to fetch from URL: ${url}. Reason: ${fetchError.message}`);
     }
 
     if (!response.ok) {
-      throw new Error(`API request failed with status: ${response.status} - ${response.statusText}`);
+      let errorMessage = response.statusText;
+      try {
+        const errorBody = await response.json();
+        errorMessage = errorBody.message || errorMessage;
+      } catch (e) {
+        console.warn("Failed to parse error body", e);
+      }
+      throw new Error(`API request failed with status: ${response.status} - ${errorMessage}`);
     }
 
     return await response.json();
