@@ -1,6 +1,7 @@
 'use client';
 
 import {useState, useEffect} from 'react';
+import dynamic from 'next/dynamic';
 import {callApi, ApiRequest} from '@/services/api-caller';
 import {summarizeDifferences} from '@/ai/flows/summarize-differences';
 import {suggestFixes} from '@/ai/flows/suggest-fixes';
@@ -18,6 +19,9 @@ import {HistoryTable} from "@/components/history-table";
 import {Icons} from "@/components/icons";
 import {AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger} from "@/components/ui/alert-dialog";
 
+// Importa react-json-editor-ajrm dinámicamente para evitar problemas con SSR
+const JSONInput = dynamic(() => import('react-json-editor-ajrm'), { ssr: false });
+
 interface RequestFormProps {
   url: string;
   method: 'GET' | 'POST';
@@ -25,7 +29,13 @@ interface RequestFormProps {
   onChange: (field: string, value: string) => void;
 }
 
-const RequestForm: React.FC<RequestFormProps> = ({url, method, data, onChange}) => {
+const RequestForm: React.FC<RequestFormProps> = ({ url, method, data, onChange }) => {
+  const handleJsonChange = (content: any) => {
+    if (!content.error) {
+      onChange('data', JSON.stringify(content.jsObject, null, 2));
+    }
+  };
+
   return (
     <div className="flex flex-col gap-4">
       <div>
@@ -42,7 +52,7 @@ const RequestForm: React.FC<RequestFormProps> = ({url, method, data, onChange}) 
         <Label htmlFor="method">Method</Label>
         <Select value={method} onValueChange={(value) => onChange('method', value)}>
           <SelectTrigger>
-            <SelectValue placeholder="Select a method"/>
+            <SelectValue placeholder="Select a method" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="GET">GET</SelectItem>
@@ -52,13 +62,17 @@ const RequestForm: React.FC<RequestFormProps> = ({url, method, data, onChange}) 
       </div>
       <div>
         <Label htmlFor="data">Data</Label>
-        <Textarea
-          id="data"
-          value={data}
-          onChange={(e) => onChange('data', e.target.value)}
-          placeholder="JSON data"
-          className="font-mono"
-        />
+        <div className="border rounded-md p-2 bg-gray-50">
+          <JSONInput
+            id="data"
+            placeholder={data ? JSON.parse(data) : {}}
+            onChange={handleJsonChange}
+            theme="light_mitsuketa_tribute"
+            locale="en"
+            height="200px"
+            width="100%"
+          />
+        </div>
       </div>
     </div>
   );
